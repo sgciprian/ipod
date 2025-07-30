@@ -86,7 +86,8 @@ type SetRemoteEventNotification struct {
 type RemoteEvent uint8
 
 const (
-	RemoteEventPlayStatus RemoteEvent = 0x03
+	RemoteEventTrackPositionMs RemoteEvent = 0x00
+	RemoteEventPlayStatus      RemoteEvent = 0x03
 )
 
 type RemoteEventNotification struct {

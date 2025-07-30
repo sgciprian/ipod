@@ -9,6 +9,7 @@ import (
 
 type DeviceDispRemote interface {
 	PlayStatusType() (state PlayStatusType)
+	TrackPositionMs() (position uint32)
 	SetRemoteEventNotificationMask(mask uint32)
 }
 
@@ -51,7 +52,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 
 		switch msg.InfoType {
 		case InfoTypeTrackPositionMs:
-			t.InfoData = &InfoTrackPositionMs{TrackPositionMs: 0}
+			t.InfoData = &InfoTrackPositionMs{TrackPositionMs: dev.TrackPositionMs()}
 		case InfoTypeTrackIndex:
 			t.InfoData = &InfoTrackIndex{TrackIndex: 1}
 		case InfoTypeChapterIndex:

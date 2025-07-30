@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"encoding/binary"
 
 	"github.com/davecgh/go-spew/spew"
 
@@ -15,7 +16,8 @@ import (
 )
 
 type DevPlayer struct {
-	state  extremote.PlayerState
+	position uint32
+	state    extremote.PlayerState
 }
 
 type DevRemoteEventSubscription struct {
@@ -165,8 +167,8 @@ func (d *DevGeneral) AccAuthCert(cert []byte) {
 
 var _ extremote.DeviceExtRemote = &DevGeneral{}
 
-func (d *DevGeneral) PlayerState() (extremote.PlayerState) {
-	return d.player.state
+func (d *DevGeneral) PlayerState() (uint32, extremote.PlayerState) {
+	return d.player.position, d.player.state
 }
 
 func (d *DevGeneral) TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter) {
@@ -180,6 +182,16 @@ func (d *DevGeneral) TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter) {
 		ipod.Respond(req, tr, &dispremote.RemoteEventNotification{
 			EventNum:  dispremote.RemoteEventPlayStatus,
 			EventData: []byte{byte(d.PlayStatusType())},
+		})
+	}
+	if d.remEvents.mask & (1 << dispremote.RemoteEventTrackPositionMs) != 0 {
+		ipod.Respond(req, tr, &dispremote.RemoteEventNotification{
+			EventNum:  dispremote.RemoteEventTrackPositionMs,
+			EventData: func() []byte {
+				b := make([]byte, 4)
+				binary.BigEndian.PutUint32(b, d.TrackPositionMs())
+				return b
+			}(),
 		})
 	}
 }
@@ -196,4 +208,8 @@ func (d *DevGeneral) PlayStatusType() (dispremote.PlayStatusType) {
 
 func (d *DevGeneral) SetRemoteEventNotificationMask(mask uint32) {
 	d.remEvents.mask = mask
+}
+
+func (d *DevGeneral) TrackPositionMs() (position uint32) {
+	return d.player.position
 }

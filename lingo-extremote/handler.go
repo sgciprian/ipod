@@ -5,7 +5,7 @@ import (
 )
 
 type DeviceExtRemote interface {
-	PlayerState() (state PlayerState)
+	PlayerState() (position uint32, state PlayerState)
 	TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter)
 }
 
@@ -86,10 +86,11 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 	case *RetrieveCategorizedDatabaseRecords:
 		ipod.Respond(req, tr, &ReturnCategorizedDatabaseRecord{})
 	case *GetPlayStatus:
+		position, state := dev.PlayerState()
 		ipod.Respond(req, tr, &ReturnPlayStatus{
 			TrackLength:   300 * 1000,
-			TrackPosition: 20 * 1000,
-			State:         dev.PlayerState(),
+			TrackPosition: position,
+			State:         state,
 		})
 	case *GetCurrentPlayingTrackIndex:
 		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackIndex{
