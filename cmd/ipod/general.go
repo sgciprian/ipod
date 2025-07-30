@@ -7,14 +7,21 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/oandrew/ipod"
+	dispremote "github.com/oandrew/ipod/lingo-dispremote"
+	extremote "github.com/oandrew/ipod/lingo-extremote"
 	general "github.com/oandrew/ipod/lingo-general"
 
 	"github.com/fullsailor/pkcs7"
 )
 
+type DevPlayer struct {
+	state  extremote.PlayerState
+}
+
 type DevGeneral struct {
 	uimode general.UIMode
 	tokens []general.FIDTokenValue
+	player DevPlayer
 }
 
 var _ general.DeviceGeneral = &DevGeneral{}
@@ -149,4 +156,28 @@ func (d *DevGeneral) AccAuthCert(cert []byte) {
 		log.Infof("cert: CN=%s", cn)
 	}
 
+}
+
+var _ extremote.DeviceExtRemote = &DevGeneral{}
+
+func (d *DevGeneral) PlayerState() (extremote.PlayerState) {
+	return d.player.state
+}
+
+func (d *DevGeneral) TogglePlayPause() {
+	if d.player.state == extremote.PlayerStatePaused {
+		d.player.state = extremote.PlayerStatePlaying
+	} else {
+		d.player.state = extremote.PlayerStatePaused
+	}
+}
+
+var _ dispremote.DeviceDispRemote = &DevGeneral{}
+
+func (d *DevGeneral) PlayStatusType() (dispremote.PlayStatusType) {
+	if d.player.state == extremote.PlayerStatePlaying {
+		return dispremote.PlayStatusPlaying
+	} else {
+		return dispremote.PlayStatusPaused
+	}
 }

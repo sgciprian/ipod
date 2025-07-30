@@ -8,6 +8,7 @@ import (
 )
 
 type DeviceDispRemote interface {
+	PlayStatusType() (state PlayStatusType)
 }
 
 func ackSuccess(req *ipod.Command) *ACK {
@@ -59,7 +60,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 			}
 		case InfoTypePlayStatus:
 			t.InfoData = &InfoPlayStatus{
-				PlayStatus: PlayStatusPlaying,
+				PlayStatus: dev.PlayStatusType(),
 			}
 		case InfoTypeVolume:
 			t.InfoData = &InfoVolume{MuteState: 0x00, UIVolumeLevel: 255}
@@ -107,7 +108,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 
 	case *GetPlayStatus:
 		ipod.Respond(req, tr, &RetPlayStatus{
-			PlayState: 0, //stopped
+			PlayState: byte(dev.PlayStatusType()),
 		})
 
 	case *SetCurrentPlayingTrack:

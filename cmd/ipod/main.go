@@ -383,7 +383,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 	log.Warnf("EOF")
 }
 
-var devGeneral = &DevGeneral{}
+var devGeneral = &DevGeneral{player: DevPlayer{state: extremote.PlayerStatePaused}}
 
 func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
 	switch cmd.ID.LingoID() {
@@ -399,9 +399,9 @@ func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
 		//todo
 		log.Warn("Lingo SimpleRemote is not supported yet")
 	case ipod.LingoDisplayRemoteID:
-		dispremote.HandleDispRemote(cmd, cmdWriter, nil)
+		dispremote.HandleDispRemote(cmd, cmdWriter, devGeneral)
 	case ipod.LingoExtRemoteID:
-		extremote.HandleExtRemote(cmd, cmdWriter, nil)
+		extremote.HandleExtRemote(cmd, cmdWriter, devGeneral)
 	case ipod.LingoDigitalAudioID:
 		audio.HandleAudio(cmd, cmdWriter, nil)
 	}

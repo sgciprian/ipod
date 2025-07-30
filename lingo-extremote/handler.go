@@ -5,7 +5,8 @@ import (
 )
 
 type DeviceExtRemote interface {
-	PlaybackStatus() (trackLength, trackPos uint32, state PlayerState)
+	PlayerState() (state PlayerState)
+	TogglePlayPause()
 }
 
 func ackSuccess(req *ipod.Command) *ACK {
@@ -88,7 +89,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		ipod.Respond(req, tr, &ReturnPlayStatus{
 			TrackLength:   300 * 1000,
 			TrackPosition: 20 * 1000,
-			State:         PlayerStatePaused,
+			State:         dev.PlayerState(),
 		})
 	case *GetCurrentPlayingTrackIndex:
 		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackIndex{
@@ -113,6 +114,9 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 	case *PlayCurrentSelection:
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *PlayControl:
+		if msg.Cmd == PlayControlToggle {
+			dev.TogglePlayPause()
+		}
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *GetTrackArtworkTimes:
 		ipod.Respond(req, tr, &RetTrackArtworkTimes{})
