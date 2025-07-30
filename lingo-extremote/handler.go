@@ -6,7 +6,7 @@ import (
 
 type DeviceExtRemote interface {
 	PlayerState() (state PlayerState)
-	TogglePlayPause()
+	TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter)
 }
 
 func ackSuccess(req *ipod.Command) *ACK {
@@ -115,7 +115,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *PlayControl:
 		if msg.Cmd == PlayControlToggle {
-			dev.TogglePlayPause()
+			dev.TogglePlayPause(req, tr)
 		}
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *GetTrackArtworkTimes:

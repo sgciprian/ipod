@@ -18,10 +18,15 @@ type DevPlayer struct {
 	state  extremote.PlayerState
 }
 
+type DevRemoteEventSubscription struct {
+	mask uint32
+}
+
 type DevGeneral struct {
-	uimode general.UIMode
-	tokens []general.FIDTokenValue
-	player DevPlayer
+	uimode    general.UIMode
+	tokens    []general.FIDTokenValue
+	player    DevPlayer
+	remEvents DevRemoteEventSubscription
 }
 
 var _ general.DeviceGeneral = &DevGeneral{}
@@ -164,11 +169,18 @@ func (d *DevGeneral) PlayerState() (extremote.PlayerState) {
 	return d.player.state
 }
 
-func (d *DevGeneral) TogglePlayPause() {
+func (d *DevGeneral) TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter) {
 	if d.player.state == extremote.PlayerStatePaused {
 		d.player.state = extremote.PlayerStatePlaying
 	} else {
 		d.player.state = extremote.PlayerStatePaused
+	}
+
+	if d.remEvents.mask & (1 << dispremote.RemoteEventPlayStatus) != 0 {
+		ipod.Respond(req, tr, &dispremote.RemoteEventNotification{
+			EventNum:  dispremote.RemoteEventPlayStatus,
+			EventData: []byte{byte(d.PlayStatusType())},
+		})
 	}
 }
 
@@ -180,4 +192,8 @@ func (d *DevGeneral) PlayStatusType() (dispremote.PlayStatusType) {
 	} else {
 		return dispremote.PlayStatusPaused
 	}
+}
+
+func (d *DevGeneral) SetRemoteEventNotificationMask(mask uint32) {
+	d.remEvents.mask = mask
 }

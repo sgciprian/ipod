@@ -82,10 +82,32 @@ type RetIndexedEQProfileName struct {
 type SetRemoteEventNotification struct {
 	EventMask uint32
 }
+
+type RemoteEvent uint8
+
+const (
+	RemoteEventPlayStatus RemoteEvent = 0x03
+)
+
 type RemoteEventNotification struct {
-	EventNum  byte
+	EventNum  RemoteEvent
 	EventData []byte
 }
+
+func (r *RemoteEventNotification) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteByte(byte(r.EventNum))
+	buf.Write(r.EventData)
+	return buf.Bytes(), nil
+}
+
+func (r *RemoteEventNotification) UnmarshalBinary(data []byte) error {
+	r.EventNum = RemoteEvent(data[0])
+	r.EventData = make([]byte, len(data)-1)
+	r.EventData = data[1:]
+	return nil
+}
+
 type GetRemoteEventStatus struct {
 }
 type RetRemoteEventStatus struct {

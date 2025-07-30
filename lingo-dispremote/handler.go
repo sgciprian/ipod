@@ -9,6 +9,7 @@ import (
 
 type DeviceDispRemote interface {
 	PlayStatusType() (state PlayStatusType)
+	SetRemoteEventNotificationMask(mask uint32)
 }
 
 func ackSuccess(req *ipod.Command) *ACK {
@@ -35,6 +36,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 			EQProfileName: ipod.StringToBytes("Default"),
 		})
 	case *SetRemoteEventNotification:
+		dev.SetRemoteEventNotificationMask(msg.EventMask)
 		ipod.Respond(req, tr, ackSuccess(req))
 
 	case *GetRemoteEventStatus:
