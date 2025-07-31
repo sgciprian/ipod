@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 
@@ -16,6 +16,9 @@ import (
 )
 
 type DevPlayer struct {
+	title    string
+	artist   string
+	album    string
 	position uint32
 	state    extremote.PlayerState
 }
@@ -165,6 +168,18 @@ func (d *DevGeneral) AccAuthCert(cert []byte) {
 
 }
 
+func (d *DevGeneral) PlayingTrackTitle() string {
+	return d.player.title
+}
+
+func (d *DevGeneral) PlayingTrackArtist() string {
+	return d.player.artist
+}
+
+func (d *DevGeneral) PlayingTrackAlbum() string {
+	return d.player.album
+}
+
 var _ extremote.DeviceExtRemote = &DevGeneral{}
 
 func (d *DevGeneral) PlayerState() (uint32, extremote.PlayerState) {
@@ -178,15 +193,15 @@ func (d *DevGeneral) TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter) {
 		d.player.state = extremote.PlayerStatePaused
 	}
 
-	if d.remEvents.mask & (1 << dispremote.RemoteEventPlayStatus) != 0 {
+	if d.remEvents.mask&(1<<dispremote.RemoteEventPlayStatus) != 0 {
 		ipod.Respond(req, tr, &dispremote.RemoteEventNotification{
 			EventNum:  dispremote.RemoteEventPlayStatus,
 			EventData: []byte{byte(d.PlayStatusType())},
 		})
 	}
-	if d.remEvents.mask & (1 << dispremote.RemoteEventTrackPositionMs) != 0 {
+	if d.remEvents.mask&(1<<dispremote.RemoteEventTrackPositionMs) != 0 {
 		ipod.Respond(req, tr, &dispremote.RemoteEventNotification{
-			EventNum:  dispremote.RemoteEventTrackPositionMs,
+			EventNum: dispremote.RemoteEventTrackPositionMs,
 			EventData: func() []byte {
 				b := make([]byte, 4)
 				binary.BigEndian.PutUint32(b, d.TrackPositionMs())
@@ -198,7 +213,7 @@ func (d *DevGeneral) TogglePlayPause(req *ipod.Command, tr ipod.CommandWriter) {
 
 var _ dispremote.DeviceDispRemote = &DevGeneral{}
 
-func (d *DevGeneral) PlayStatusType() (dispremote.PlayStatusType) {
+func (d *DevGeneral) PlayStatusType() dispremote.PlayStatusType {
 	if d.player.state == extremote.PlayerStatePlaying {
 		return dispremote.PlayStatusPlaying
 	} else {
@@ -212,4 +227,16 @@ func (d *DevGeneral) SetRemoteEventNotificationMask(mask uint32) {
 
 func (d *DevGeneral) TrackPositionMs() (position uint32) {
 	return d.player.position
+}
+
+func (d *DevGeneral) TrackInfoTrack() string {
+	return d.player.title
+}
+
+func (d *DevGeneral) TrackInfoArtist() string {
+	return d.player.artist
+}
+
+func (d *DevGeneral) TrackInfoAlbum() string {
+	return d.player.album
 }

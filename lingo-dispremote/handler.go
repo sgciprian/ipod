@@ -11,6 +11,9 @@ type DeviceDispRemote interface {
 	PlayStatusType() (state PlayStatusType)
 	TrackPositionMs() (position uint32)
 	SetRemoteEventNotificationMask(mask uint32)
+	TrackInfoTrack() string
+	TrackInfoArtist() string
+	TrackInfoAlbum() string
 }
 
 func ackSuccess(req *ipod.Command) *ACK {
@@ -135,11 +138,11 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 			}
 		case TrackInfoTypeArtist:
 			t.InfoData = &TrackInfoArtist{
-				Name: ipod.StringToBytes(""),
+				Name: ipod.StringToBytes(dev.TrackInfoArtist()),
 			}
 		case TrackInfoTypeAlbum:
 			t.InfoData = &TrackInfoAlbum{
-				Name: ipod.StringToBytes(""),
+				Name: ipod.StringToBytes(dev.TrackInfoAlbum()),
 			}
 		case TrackInfoTypeGenre:
 			t.InfoData = &TrackInfoGenre{
@@ -147,7 +150,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 			}
 		case TrackInfoTypeTrack:
 			t.InfoData = &TrackInfoTrack{
-				Title: ipod.StringToBytes("track"),
+				Title: ipod.StringToBytes(dev.TrackInfoTrack()),
 			}
 		case TrackInfoTypeComposer:
 			t.InfoData = &TrackInfoComposer{

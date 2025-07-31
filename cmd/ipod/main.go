@@ -383,7 +383,12 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 	log.Warnf("EOF")
 }
 
-var devGeneral = &DevGeneral{player: DevPlayer{state: extremote.PlayerStatePaused}}
+var devGeneral = &DevGeneral{player: DevPlayer{
+	title:  "title",
+	artist: "artist",
+	album:  "album",
+	state:  extremote.PlayerStatePaused,
+}}
 
 func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
 	switch cmd.ID.LingoID() {
