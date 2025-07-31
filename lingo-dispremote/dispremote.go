@@ -87,6 +87,7 @@ type RemoteEvent uint8
 
 const (
 	RemoteEventTrackPositionMs RemoteEvent = 0x00
+	RemoteEventTrackIndex      RemoteEvent = 0x01
 	RemoteEventPlayStatus      RemoteEvent = 0x03
 )
 

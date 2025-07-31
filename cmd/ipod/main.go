@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/oandrew/ipod"
+	"github.com/oandrew/ipod/dbus"
 	"github.com/oandrew/ipod/hid"
 	audio "github.com/oandrew/ipod/lingo-audio"
 	dispremote "github.com/oandrew/ipod/lingo-dispremote"
@@ -332,6 +333,9 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 func processFrames(frameTransport ipod.FrameReadWriter) {
 	serde := ipod.CommandSerde{}
 
+	dbus_conn, dbus_channel := dbus.SubscribeDbus()
+	defer dbus_conn.Close()
+
 	for {
 		inFrame, err := frameTransport.ReadFrame()
 		if err == io.EOF {
@@ -379,6 +383,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			logFrame(outFrame, outFrameErr, ">> FRAME")
 		}
 
+		dbus.ProcessDbusUpdates(&outCmdBuf, devGeneral, dbus_channel)
 	}
 	log.Warnf("EOF")
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/oandrew/ipod"
+	"github.com/oandrew/ipod/dbus"
 	dispremote "github.com/oandrew/ipod/lingo-dispremote"
 	extremote "github.com/oandrew/ipod/lingo-extremote"
 	general "github.com/oandrew/ipod/lingo-general"
@@ -16,9 +17,11 @@ import (
 )
 
 type DevPlayer struct {
-	title    string
-	artist   string
-	album    string
+	title      string
+	artist     string
+	album      string
+	info_dirty bool
+
 	position uint32
 	state    extremote.PlayerState
 }
@@ -239,4 +242,41 @@ func (d *DevGeneral) TrackInfoArtist() string {
 
 func (d *DevGeneral) TrackInfoAlbum() string {
 	return d.player.album
+}
+
+var _ dbus.DeviceDbus = &DevGeneral{}
+
+func (d *DevGeneral) UpdateTitle(title string) {
+	if d.player.title != title {
+		d.player.info_dirty = true
+	}
+	d.player.title = title
+}
+
+func (d *DevGeneral) UpdateArtist(artist string) {
+	if d.player.artist != artist {
+		d.player.info_dirty = true
+	}
+	d.player.artist = artist
+}
+
+func (d *DevGeneral) UpdateAlbum(album string) {
+	if d.player.album != album {
+		d.player.info_dirty = true
+	}
+	d.player.album = album
+}
+
+func (d *DevGeneral) CommitChanges(tr ipod.CommandWriter) {
+	if d.player.info_dirty {
+		ipod.Send(tr, &dispremote.RemoteEventNotification{
+			EventNum: dispremote.RemoteEventTrackIndex,
+			EventData: func() []byte {
+				b := make([]byte, 4)
+				binary.BigEndian.PutUint32(b, 0)
+				return b
+			}(),
+		})
+		d.player.info_dirty = false
+	}
 }
