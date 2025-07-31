@@ -16,7 +16,7 @@ type DeviceDbus interface {
 }
 
 func SubscribeDbus() (*dbus.Conn, chan *dbus.Signal) {
-	dbus_conn, err := dbus.ConnectSessionBus()
+	dbus_conn, err := dbus.ConnectSystemBus()
 	if err != nil {
 		log.Fatalf("could not connect to dbus: %v", err)
 	}
@@ -33,45 +33,43 @@ func SubscribeDbus() (*dbus.Conn, chan *dbus.Signal) {
 	return dbus_conn, dbus_channel
 }
 
-func ProcessDbusUpdates(tr ipod.CommandWriter, dev DeviceDbus, dbus_channel chan *dbus.Signal) {
-	for signal := range dbus_channel {
-		if len(signal.Body) < 3 {
-			continue
-		}
+func ProcessDbusUpdate(tr ipod.CommandWriter, dev DeviceDbus, signal *dbus.Signal) {
+	if len(signal.Body) < 3 {
+		return
+	}
 
-		iface, ok := signal.Body[0].(string)
-		if !ok || !strings.HasPrefix(iface, "org.bluez") {
-			continue
-		}
+	iface, ok := signal.Body[0].(string)
+	if !ok || !strings.HasPrefix(iface, "org.bluez") {
+		return
+	}
 
-		changedProps, ok := signal.Body[1].(map[string]dbus.Variant)
+	changedProps, ok := signal.Body[1].(map[string]dbus.Variant)
+	if !ok {
+		return
+	}
+
+	if trackInfo, found := changedProps["Track"]; found {
+		trackMap, ok := trackInfo.Value().(map[string]dbus.Variant)
 		if !ok {
-			continue
+			return
 		}
 
-		if trackInfo, found := changedProps["Track"]; found {
-			trackMap, ok := trackInfo.Value().(map[string]dbus.Variant)
-			if !ok {
-				continue
+		if titleVariant, ok := trackMap["Title"]; ok {
+			if title, ok := titleVariant.Value().(string); ok {
+				dev.UpdateTitle(title)
 			}
-
-			if titleVariant, ok := trackMap["Title"]; ok {
-				if title, ok := titleVariant.Value().(string); ok {
-					dev.UpdateTitle(title)
-				}
-			}
-			if artistVariant, ok := trackMap["Artist"]; ok {
-				if artist, ok := artistVariant.Value().(string); ok {
-					dev.UpdateArtist(artist)
-				}
-			}
-			if albumVariant, ok := trackMap["Album"]; ok {
-				if album, ok := albumVariant.Value().(string); ok {
-					dev.UpdateAlbum(album)
-				}
-			}
-
-			dev.CommitChanges(tr)
 		}
+		if artistVariant, ok := trackMap["Artist"]; ok {
+			if artist, ok := artistVariant.Value().(string); ok {
+				dev.UpdateArtist(artist)
+			}
+		}
+		if albumVariant, ok := trackMap["Album"]; ok {
+			if album, ok := albumVariant.Value().(string); ok {
+				dev.UpdateAlbum(album)
+			}
+		}
+
+		dev.CommitChanges(tr)
 	}
 }

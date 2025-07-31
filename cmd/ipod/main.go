@@ -333,59 +333,77 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 func processFrames(frameTransport ipod.FrameReadWriter) {
 	serde := ipod.CommandSerde{}
 
-	dbus_conn, dbus_channel := dbus.SubscribeDbus()
-	defer dbus_conn.Close()
+	dbusConn, dbusChannel := dbus.SubscribeDbus()
+	defer dbusConn.Close()
+
+	frameChannel := make(chan bool)
+	terminate := make(chan bool)
+	go processFrame(frameTransport, serde, frameChannel, terminate)
 
 	for {
-		inFrame, err := frameTransport.ReadFrame()
+		select {
+		case <-frameChannel:
+			go processFrame(frameTransport, serde, frameChannel, terminate)
+		case signal := <-dbusChannel:
+			outCmdBuf := ipod.CmdBuffer{}
+			dbus.ProcessDbusUpdate(&outCmdBuf, devGeneral, signal)
+		case <-terminate:
+			log.Warnf("EOF")
+			return
+		}
+	}
+}
+
+func processFrame(frameTransport ipod.FrameReadWriter, serde ipod.CommandSerde, frameReady chan<- bool, terminate chan<- bool) {
+	inFrame, err := frameTransport.ReadFrame()
+	if err == io.EOF {
+		terminate <- true
+		return
+	}
+	logFrame(inFrame, err, "<< FRAME")
+	if err != nil {
+		frameReady <- true
+		return
+	}
+
+	packetReader := ipod.NewPacketReader(inFrame)
+	inCmdBuf := ipod.CmdBuffer{}
+	for {
+		inPacket, err := packetReader.ReadPacket()
 		if err == io.EOF {
 			break
 		}
-		logFrame(inFrame, err, "<< FRAME")
+		logPacket(inPacket, err, "<< PACKET")
 		if err != nil {
 			continue
 		}
 
-		packetReader := ipod.NewPacketReader(inFrame)
-		inCmdBuf := ipod.CmdBuffer{}
-		for {
-			inPacket, err := packetReader.ReadPacket()
-			if err == io.EOF {
-				break
-			}
-			logPacket(inPacket, err, "<< PACKET")
-			if err != nil {
-				continue
-			}
-
-			inCmd, err := serde.UnmarshalCmd(inPacket)
-			logCmd(inCmd, err, "<< CMD")
-			inCmdBuf.WriteCommand(inCmd)
-		}
-
-		outCmdBuf := ipod.CmdBuffer{}
-		for i := range inCmdBuf.Commands {
-			//todo: check return error
-			handlePacket(&outCmdBuf, inCmdBuf.Commands[i])
-		}
-
-		for i := range outCmdBuf.Commands {
-			outCmd := outCmdBuf.Commands[i]
-			logCmd(outCmd, nil, ">> CMD")
-
-			outPacket, err := serde.MarshalCmd(outCmd)
-			logPacket(outPacket, err, ">> PACKET")
-
-			packetWriter := ipod.NewPacketWriter()
-			packetWriter.WritePacket(outPacket)
-			outFrame := packetWriter.Bytes()
-			outFrameErr := frameTransport.WriteFrame(outFrame)
-			logFrame(outFrame, outFrameErr, ">> FRAME")
-		}
-
-		dbus.ProcessDbusUpdates(&outCmdBuf, devGeneral, dbus_channel)
+		inCmd, err := serde.UnmarshalCmd(inPacket)
+		logCmd(inCmd, err, "<< CMD")
+		inCmdBuf.WriteCommand(inCmd)
 	}
-	log.Warnf("EOF")
+
+	outCmdBuf := ipod.CmdBuffer{}
+	for i := range inCmdBuf.Commands {
+		//todo: check return error
+		handlePacket(&outCmdBuf, inCmdBuf.Commands[i])
+	}
+
+	for i := range outCmdBuf.Commands {
+		outCmd := outCmdBuf.Commands[i]
+		logCmd(outCmd, nil, ">> CMD")
+
+		outPacket, err := serde.MarshalCmd(outCmd)
+		logPacket(outPacket, err, ">> PACKET")
+
+		packetWriter := ipod.NewPacketWriter()
+		packetWriter.WritePacket(outPacket)
+		outFrame := packetWriter.Bytes()
+		outFrameErr := frameTransport.WriteFrame(outFrame)
+		logFrame(outFrame, outFrameErr, ">> FRAME")
+	}
+
+	frameReady <- true
 }
 
 var devGeneral = &DevGeneral{player: DevPlayer{
