@@ -336,14 +336,28 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 	dbusConn, dbusChannel := dbus.SubscribeDbus()
 	defer dbusConn.Close()
 
-	frameChannel := make(chan bool)
+	frameChannel := make(chan []byte)
 	terminate := make(chan bool)
-	go processFrame(frameTransport, serde, frameChannel, terminate)
+
+	go func() {
+		for {
+			inFrame, err := frameTransport.ReadFrame()
+			if err == io.EOF {
+				terminate <- true
+				return
+			}
+			logFrame(inFrame, err, "<< FRAME")
+			if err != nil {
+				continue
+			}
+			frameChannel <- inFrame
+		}
+	}()
 
 	for {
 		select {
-		case <-frameChannel:
-			go processFrame(frameTransport, serde, frameChannel, terminate)
+		case frame := <-frameChannel:
+			processFrame(frameTransport, &serde, frame)
 		case signal := <-dbusChannel:
 			outCmdBuf := ipod.CmdBuffer{}
 			dbus.ProcessDbusUpdate(&outCmdBuf, devGeneral, signal)
@@ -354,18 +368,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 	}
 }
 
-func processFrame(frameTransport ipod.FrameReadWriter, serde ipod.CommandSerde, frameReady chan<- bool, terminate chan<- bool) {
-	inFrame, err := frameTransport.ReadFrame()
-	if err == io.EOF {
-		terminate <- true
-		return
-	}
-	logFrame(inFrame, err, "<< FRAME")
-	if err != nil {
-		frameReady <- true
-		return
-	}
-
+func processFrame(frameTransport ipod.FrameReadWriter, serde *ipod.CommandSerde, inFrame []byte) {
 	packetReader := ipod.NewPacketReader(inFrame)
 	inCmdBuf := ipod.CmdBuffer{}
 	for {
@@ -402,8 +405,6 @@ func processFrame(frameTransport ipod.FrameReadWriter, serde ipod.CommandSerde, 
 		outFrameErr := frameTransport.WriteFrame(outFrame)
 		logFrame(outFrame, outFrameErr, ">> FRAME")
 	}
-
-	frameReady <- true
 }
 
 var devGeneral = &DevGeneral{player: DevPlayer{
